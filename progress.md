@@ -4,4 +4,7 @@
 the project on time.
 
 
-7th oct:  Today, I set up Ubuntu using WSL and checked that the project could be compiled using g++ on Linux. I also started working on Task 1. Tomorrow, I planned to continue working on the resolver and its functions.
+7th oct:  Today, I worked on setting up Ubuntu through WSL so I could compile and run my project on Linux. I also checked the compilation using g++ and started working on Task 1. Tomorrow, I plan to continue with the resolver and understand how it reads the instructions and handles function calls.
+
+
+9th oct: Today, I continued working on the resolver and looked into how the program stores and reads information about functions. I also started looking at the functions needed for executing the program properly. Tomorrow, I plan to work on the stack and timeline parts of the project.
