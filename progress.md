@@ -9,4 +9,11 @@ the project on time.
 
 9th oct: Today, I continued working on the resolver and looked into how the program stores and reads information about functions. I also started looking at the functions needed for executing the program properly. Tomorrow, I plan to work on the stack and timeline parts of the project.
 
-10th oct:  Today, I worked on the Stack class and fixed some of its functions, including isempty, depth, and snapshotinto. These functions are important for keeping track of the program's state. Tomorrow, I plan to work on tokenizing instructions and creating snapshots.
+10th oct:  Today, I worked on the Stack class and fixed some of its functions, including isempty, depth, and snapshotinto. These functions are important for keeping track of the program's state. Tomorrow, I plan to continue with the execution functions.
+
+
+11th oct: Today, I worked on the core execution functions for handling instructions like set, add, func, and call. Tomorrow, I plan to work on writing the snapshot outputs.
+
+12th oct: Today, I worked on the snapshot functions to write the stack state and frames into session.tdbg. I also added #ifndef _WIN32 guards around sys/socket.h and unistd.h so the code stays clean for Windows compilers. I finished up the resolve.bin output logic and polished the rest of the binary reading functions.
+
+13th oct: I double-checked all execution paths, stack operations, and output structures in server.cpp.
