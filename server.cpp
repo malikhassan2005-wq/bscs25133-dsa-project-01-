@@ -46,30 +46,72 @@ public:
     // Implement these functions:
     Stack()
     { // initialize the stack
+        top = NULL;
+        count = 0;
     }
     void push(const T &val)
     {
+    if(count >= MAX_STACK_DEPTH){
+    cout<<"LIMIT REACHED"<<endl;
+    return;
+    }
+    Node* temp = new Node;
 
-        // pushes the value on the stack if max limit is not reached yet.
+    temp->data = val;
+    temp->next = top;
+    top = temp;
+    count++;
+
+
+        
     }
     T pop()
     {
-        // pop the top value on the stack
+        if(top==NULL){
+            cout<<"Empty Stack"<<endl;
+            return T();
+        }
+        Node* temp = top;
+        T val = temp->data;
+
+        top = top->next;
+        delete temp;
+        count--;
+
+        return val;
     }
     T &peek()
     {
-        // returns the top value on the stack
+        if (top == NULL)
+        {
+            throw "Stack is empty";
+        }
+
+        return top->data;
     }
     bool isEmpty()
     {
+        return top == NULL;
     }
     int32_t depth()
     {
+        return count;
     }
     int32_t snapshot_into(T out[], int32_t maxLen)
     {
-        // copies every frame, top to bottom in the array given as a parameter
-        // this is what buildSnapshot() call, returns count written
+       
+        Node *temp = top;
+        int32_t written = 0;
+
+        while (temp != NULL && written < maxLen)
+        {
+            out[written] = temp->data;
+            written++;
+            temp = temp->next;
+        }
+
+        return written;
+
     }
 };
 
@@ -91,16 +133,37 @@ public:
     // Implement these functions
     Timeline()
     {
+        head = NULL;
+        tail = NULL;
+        stepCount=0;
     }
     void record(Snapshot *s)
-    {
-        // add record in the timeline
+    { 
+        TimelineNode * temp = new TimelineNode;
+        temp->data = s;
+        temp->next = NULL;
+        temp->prev = tail;
+
+        if(head==NULL){
+            head= temp;
+            tail=temp;
+        }
+
+        else{
+            tail->next= temp;
+            tail=temp;
+        }
+
+        stepCount++;
+        
     }
     TimelineNode *begin()
     {
+        return head;
     }
     int32_t getStepCount()
     {
+        return stepCount;
     }
 };
 
@@ -264,27 +327,245 @@ bool validateProgram(const char *sourcePath)
 // PASS 0x1: RESOLVE() -> resolve.bin
 int64_t writeResolveRecord(FILE *f, int64_t offsetField, const string &text)
 {
-    // writes one [offset(8B)][size(4B)][string] record at the current file position
-    // returns this record's own starting byte position
+    int64_t recordPosition = ftell(f);
+    int32_t size = (int32_t)text.size();
+
+    if (recordPosition < 0){
+        return -1;
+
+    }
+
+    if (fwrite(&offsetField, sizeof(int64_t), 1, f) != 1)  {
+
+        return -1;
+    }
+
+    if (fwrite(&size, sizeof(int32_t), 1, f) != 1) {
+
+        return -1;
+    }
+
+    if (size > 0)    {
+
+
+        if (fwrite(text.c_str(), 1, size, f) != (size_t)size){ 
+
+            return -1;
+        }
+    }
+
+    return recordPosition;
 }
 int64_t readResolveRecord(FILE *f, string &outText)
 {
-    // reads one record at the current position and advances past it, returns the offset field - the raw line text comes back untouched in outText.
+    int64_t offsetField;
+    int32_t size;
+
+    if (fread(&offsetField, sizeof(int64_t), 1, f) != 1){
+
+    
+    
+        return -1;
+    }
+
+    if (fread(&size, sizeof(int32_t), 1, f) != 1){
+
+    
+        return -1;
+    }
+
+    if (size < 0 || size > MAX_SOURCE_BYTES){
+    
+        return -1;
+    }
+
+    char *buffer = new char[size + 1];
+
+    if (size > 0){
+    
+        if (fread(buffer, 1, size, f) != (size_t)size){
+        
+            delete[] buffer;
+            return -1;
+        }
+    }
+
+    buffer[size] = '\0';
+    outText = buffer;
+
+    delete[] buffer;
+
+    return offsetField;
 }
+
 int64_t resolveProgram(const char *sourcePath, const char *resolveBinPath)
 {
     FuncEntry funcArray[MAX_FUNCS];
     int32_t funcCount = 0;
     PendingPatch patches[MAX_PATCHES];
     int32_t patchCount = 0;
-    // Every source line becomes one record holding the raw line, as-is.
-    // resolve() only PEEKS at the leading word(s) -- enough to spot FUNC
-    // (remember its position) and CALL (remember which function it needs
-    // and where its offset field sits).
-    // Once the whole file is written, every CALL's offset field is patched
-    // with its target's position. Patching happens after the full write
-    // Returns the byte offset of main's FUNC header record.
-    // if there is no main return the error 
+
+    ifstream in(sourcePath);
+
+    if (!in)
+    {
+        cout << "Could not open source file" << endl;
+        return -1;
+    }
+
+    FILE *out = fopen(resolveBinPath, "wb");
+
+    if (out == NULL)
+    {
+        cout << "Could not create resolve.bin" << endl;
+        in.close();
+        return -1;
+    }
+
+    string line;
+    int64_t mainOffset = -1;
+    bool valid = true;
+
+    while (getline(in, line))
+    {
+        string word = firstWord(line);
+        int64_t pos = ftell(out);
+
+        if (pos < 0)
+        {
+            valid = false;
+            break;
+        }
+
+        if (word == "func")
+        {
+            string name = secondWord(line);
+
+            if (name == "")
+            {
+                cout << "Invalid function declaration" << endl;
+                valid = false;
+                break;
+            }
+
+            for (int32_t i = 0; i < funcCount; i++)
+            {
+                if (funcArray[i].funcName == name)
+                {
+                    cout << "Duplicate function: " << name << endl;
+                    valid = false;
+                    break;
+                }
+            }
+
+            if (!valid)
+            {
+                break;
+            }
+
+            if (funcCount >= MAX_FUNCS)
+            {
+                cout << "Too many functions" << endl;
+                valid = false;
+                break;
+            }
+
+            funcArray[funcCount].funcName = name;
+            funcArray[funcCount].byteOffsetInResolveBin = pos;
+            funcCount++;
+
+            if (name == "main")
+            {
+                mainOffset = pos;
+            }
+        }
+
+        if (word == "call")
+        {
+            string name = secondWord(line);
+
+            if (name == "")
+            {
+                cout << "Invalid call instruction" << endl;
+                valid = false;
+                break;
+            }
+
+            if (patchCount >= MAX_PATCHES)
+            {
+                cout << "Too many function calls" << endl;
+                valid = false;
+                break;
+            }
+
+            patches[patchCount].byteOffsetOfOffsetField = pos;
+            patches[patchCount].targetFuncName = name;
+            patchCount++;
+        }
+
+        if (writeResolveRecord(out, 0, line) < 0)
+        {
+            cout << "Could not write resolve.bin" << endl;
+            valid = false;
+            break;
+        }
+    }
+
+    in.close();
+
+    if (valid && mainOffset == -1)
+    {
+        cout << "Invalid program: main function not found" << endl;
+        valid = false;
+    }
+
+    for (int32_t i = 0; i < patchCount && valid; i++)
+    {
+        bool found = false;
+        int64_t target = -1;
+
+        for (int32_t j = 0; j < funcCount; j++)
+        {
+            if (funcArray[j].funcName == patches[i].targetFuncName)
+            {
+                target = funcArray[j].byteOffsetInResolveBin;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            cout << "Undefined function: "
+                 << patches[i].targetFuncName << endl;
+            valid = false;
+            break;
+        }
+
+        if (fseek(out, (long)patches[i].byteOffsetOfOffsetField, SEEK_SET) != 0)
+        {
+            cout << "Could not find call position" << endl;
+            valid = false;
+            break;
+        }
+
+        if (fwrite(&target, sizeof(int64_t), 1, out) != 1)
+        {
+            cout << "Could not update call position" << endl;
+            valid = false;
+            break;
+        }
+    }
+
+    fclose(out);
+
+    if (!valid)
+    {
+        remove(resolveBinPath);
+        return -1;
+    }
+
+    return mainOffset;
 }
 
 // PASS 0x2: EXECUTION (tokenization happens here)
@@ -305,10 +586,73 @@ int32_t tokenizeLine(const string &line, Token tokens[], int32_t maxTokens)
     // instruction set = [func, func_end, call, set, add, sub, mul and div]
     // next word is identifier like name of a function, variable name
     // after identifier all are the params/arg, space separated
+    int32_t count = 0;
+    string word = "";
+
+    for (int32_t i = 0; i < (int32_t)line.length(); i++) {
+
+        if (line[i] != ' ') {
+
+            word += line[i];
+
+        } 
+        
+        else if (word != "") {
+
+            tokens[count].text = word;
+
+            if (count == 0) {
+                tokens[count].type = KEYWORD;
+
+            } 
+            else if (count == 1) {
+                tokens[count].type = IDENTIFIER;
+
+            } 
+            else {
+                tokens[count].type = PARAM;
+            }
+
+            count++;
+            word = "";
+
+            if (count >= maxTokens) {
+                return count;
+
+            }
+        }
+
+    }
+
+    if (word != "" && count < maxTokens) {
+
+        tokens[count].text = word;
+
+        if (count == 0) {
+            tokens[count].type = KEYWORD;
+
+        } 
+        else if (count == 1) {
+            tokens[count].type = IDENTIFIER;
+
+        } 
+        else {
+            tokens[count].type = PARAM;
+
+        }
+
+        count++;
+    }
+
+    return count;
+
 }
 Snapshot *buildSnapshot(Stack<Frame> &callStack)
 {
-    // build the snapshot based on the callStack given
+    Snapshot * snap = new Snapshot;
+
+    snap->stackDepth = callStack.snapshot_into(snap->callStack,MAX_STACK_DEPTH);
+    return snap;
 }
 void executeProgram(const char *resolveBinPath, int64_t mainOffset, Timeline &timeline)
 {
