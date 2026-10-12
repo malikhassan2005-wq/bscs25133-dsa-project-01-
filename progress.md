@@ -8,3 +8,5 @@ the project on time.
 
 
 9th oct: Today, I continued working on the resolver and looked into how the program stores and reads information about functions. I also started looking at the functions needed for executing the program properly. Tomorrow, I plan to work on the stack and timeline parts of the project.
+
+10th oct:  Today, I worked on the Stack class and fixed some of its functions, including isempty, depth, and snapshotinto. These functions are important for keeping track of the program's state. Tomorrow, I plan to work on tokenizing instructions and creating snapshots.
