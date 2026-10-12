@@ -4,4 +4,4 @@
 the project on time.
 
 
-7th oct:
+7th oct:  Today, I set up Ubuntu using WSL and checked that the project could be compiled using g++ on Linux. I also started working on Task 1. Tomorrow, I planned to continue working on the resolver and its functions.
